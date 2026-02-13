@@ -131,38 +131,34 @@ def create_model(model_name, num_classes=120, pretrained=True):
     print(f"Creating model: {model_name}")
     
     if model_name == 'resnet18':
-        model = models.resnet18(pretrained=pretrained)
-        model.fc = nn.Linear(model.fc.in_features, num_classes)
+        model = timm.create_model('resnet18.a1_in1k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'resnet50':
-        model = models.resnet50(pretrained=pretrained)
-        model.fc = nn.Linear(model.fc.in_features, num_classes)
+        model = timm.create_model('resnet50d.a1_in1k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'resnet101':
-        model = models.resnet101(pretrained=pretrained)
-        model.fc = nn.Linear(model.fc.in_features, num_classes)
+        model = timm.create_model('resnext101_32x32d.fb_wsl_ig1b_ft_in1k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'mobilenetv2':
-        model = models.mobilenet_v2(pretrained=pretrained)
-        model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
+        model = timm.create_model('mobilenetv2_100.ra_in1k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'efficientnet_b0':
-        model = timm.create_model('efficientnet_b0', pretrained=pretrained, num_classes=num_classes)
+        model = timm.create_model('efficientnet_b0.ra4_e3600_r224_in1k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'efficientnet_b3':
-        model = timm.create_model('efficientnet_b3', pretrained=pretrained, num_classes=num_classes)
+        model = timm.create_model('efficientnet_b3.ra2_in1k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'efficientnet_b7':
-        model = timm.create_model('efficientnet_b7', pretrained=pretrained, num_classes=num_classes)
+        model = timm.create_model('tf_efficientnet_b7.ap_in1k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'convnext_tiny':
-        model = timm.create_model('convnext_tiny', pretrained=pretrained, num_classes=num_classes)
+        model = timm.create_model('convnext_tiny.fb_in22k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'vit_base':
-        model = timm.create_model('vit_base_patch16_224', pretrained=pretrained, num_classes=num_classes)
+        model = timm.create_model('vit_large_patch16_224.augreg_in21k_ft_in1k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'swin_tiny':
-        model = timm.create_model('swin_tiny_patch4_window7_224', pretrained=pretrained, num_classes=num_classes)
+        model = timm.create_model('swin_tiny_patch4_window7_224.ms_in22k_ft_in1k', pretrained=pretrained, num_classes=num_classes)
     
     else:
         raise ValueError(f"Unknown model: {model_name}")
