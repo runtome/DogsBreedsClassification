@@ -155,7 +155,7 @@ def create_model(model_name, num_classes=120, pretrained=True):
         model = timm.create_model('convnext_tiny.fb_in22k', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'vit_base':
-        model = timm.create_model('vit_large_patch16_224.augreg_in21k_ft_in1k', pretrained=pretrained, num_classes=num_classes)
+        model = timm.create_model('vit_base_patch16_224', pretrained=pretrained, num_classes=num_classes)
     
     elif model_name == 'swin_tiny':
         model = timm.create_model('swin_tiny_patch4_window7_224.ms_in22k_ft_in1k', pretrained=pretrained, num_classes=num_classes)
@@ -306,7 +306,7 @@ def main():
         'annotations_dir': '/kaggle/input/stanford-dogs-dataset/annotations/Annotation',
         'save_dir': 'model_checkpoints',
         'results_dir': 'results',
-        'batch_size': 32,
+        'batch_size': 16,
         'num_epochs': 1,
         'learning_rate': 0.001,
         'num_workers': 4,
