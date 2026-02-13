@@ -306,12 +306,12 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
 def main():
     # ===== Configuration =====
     CONFIG = {
-        'images_dir': 'datasets/images/Images',
-        'annotations_dir': 'datasets/annotations/Annotation',
+        'images_dir': '/kaggle/input/stanford-dogs-dataset/images/Images',
+        'annotations_dir': '/kaggle/input/stanford-dogs-dataset/annotations/Annotation',
         'save_dir': 'model_checkpoints',
         'results_dir': 'results',
         'batch_size': 32,
-        'num_epochs': 20,
+        'num_epochs': 1,
         'learning_rate': 0.001,
         'num_workers': 4,
         'image_size': 224,
