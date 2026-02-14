@@ -356,8 +356,8 @@ def train_model_improved(model, train_loader, val_loader, device, num_epochs,
 def main():
     # Configuration
     CONFIG = {
-        'images_dir': 'datasets/images/Images',
-        'annotations_dir': 'datasets/annotations/Annotation',
+        'images_dir': '/kaggle/input/stanford-dogs-dataset/images/Images',
+        'annotations_dir': '/kaggle/input/stanford-dogs-dataset/annotations/Annotation',
         'save_dir': 'model_checkpoints',
         'results_dir': 'results_improved',
         'batch_size': 32,
