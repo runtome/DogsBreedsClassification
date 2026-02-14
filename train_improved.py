@@ -361,7 +361,7 @@ def main():
         'save_dir': 'model_checkpoints',
         'results_dir': 'results_improved',
         'batch_size': 32,
-        'num_epochs': 20,
+        'num_epochs': 10,
         'num_workers': 4,
         'image_size': 224,
         'use_bbox': False,
