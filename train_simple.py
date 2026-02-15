@@ -197,8 +197,8 @@ def train_model_simple(model, train_loader, val_loader, device, num_epochs,
 # ==================== Main ====================
 def main():
     CONFIG = {
-        'images_dir': 'datasets/images/Images',
-        'annotations_dir': 'datasets/annotations/Annotation',
+        'images_dir': '/kaggle/input/stanford-dogs-dataset/images/Images',
+        'annotations_dir': '/kaggle/input/stanford-dogs-dataset/annotations/Annotation',
         'save_dir': 'model_checkpoints',
         'results_dir': 'results_simple',
         'batch_size': 16,
