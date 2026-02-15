@@ -167,8 +167,18 @@ def create_model(model_name, num_classes=120, pretrained=True):
 
 
 # ==================== Training Functions ====================
-def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
-    """Train for one epoch"""
+def get_cosine_schedule_with_warmup(optimizer, num_warmup_steps, num_training_steps, min_lr=1e-6):
+    """Warmup + Cosine annealing scheduler"""
+    def lr_lambda(current_step):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        progress = float(current_step - num_warmup_steps) / float(max(1, num_training_steps - num_warmup_steps))
+        return max(min_lr, 0.5 * (1.0 + np.cos(np.pi * progress)))
+    return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+
+def train_one_epoch(model, dataloader, criterion, optimizer, scheduler, device, epoch, grad_clip=None, scheduler_type='step'):
+    """Train for one epoch with optional gradient clipping and scheduler"""
     model.train()
     running_loss = 0.0
     running_corrects = 0
@@ -188,7 +198,16 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
         
         # Backward pass
         loss.backward()
+        
+        # Gradient clipping if specified
+        if grad_clip:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+        
         optimizer.step()
+        
+        # Step scheduler per batch for cosine
+        if scheduler and scheduler_type == 'cosine':
+            scheduler.step()
         
         # Statistics
         running_loss += loss.item() * inputs.size(0)
@@ -242,23 +261,31 @@ def validate(model, dataloader, criterion, device):
 
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, 
-                scheduler, device, num_epochs, model_name, save_dir):
-    """Complete training loop"""
+                scheduler, device, num_epochs, model_name, save_dir, model_config):
+    """Complete training loop with model-specific configuration"""
     best_acc = 0.0
     history = {
         'train_loss': [], 'train_acc': [],
         'val_loss': [], 'val_acc': [],
-        'val_precision': [], 'val_recall': [], 'val_f1': []
+        'val_precision': [], 'val_recall': [], 'val_f1': [],
+        'learning_rates': []
     }
     
+    # Get gradient clipping value and scheduler type
+    grad_clip = model_config.get('grad_clip', None)
+    scheduler_type = model_config.get('scheduler', 'step')
+    
     for epoch in range(1, num_epochs + 1):
+        current_lr = optimizer.param_groups[0]['lr']
+        
         print(f"\n{'='*60}")
-        print(f"Model: {model_name} | Epoch {epoch}/{num_epochs}")
+        print(f"Model: {model_name} | Epoch {epoch}/{num_epochs} | LR: {current_lr:.6f}")
         print(f"{'='*60}")
         
         # Train
         train_loss, train_acc = train_one_epoch(
-            model, train_loader, criterion, optimizer, device, epoch
+            model, train_loader, criterion, optimizer, scheduler, device, 
+            epoch, grad_clip, scheduler_type
         )
         
         # Validate
@@ -266,8 +293,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
             model, val_loader, criterion, device
         )
         
-        # Learning rate scheduling
-        if scheduler:
+        # Step scheduler per epoch for step LR
+        if scheduler and scheduler_type == 'step':
             scheduler.step()
         
         # Save history
@@ -278,6 +305,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         history['val_precision'].append(val_prec)
         history['val_recall'].append(val_rec)
         history['val_f1'].append(val_f1)
+        history['learning_rates'].append(current_lr)
         
         print(f"\nTrain Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
         print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
@@ -291,7 +319,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'best_acc': best_acc,
-                'history': history
+                'history': history,
+                'config': model_config
             }, os.path.join(save_dir, f'{model_name}_best.pth'))
             print(f"✓ Saved best model with accuracy: {best_acc:.4f}")
     
@@ -306,23 +335,96 @@ def main():
         'annotations_dir': '/kaggle/input/stanford-dogs-dataset/annotations/Annotation',
         'save_dir': 'model_checkpoints',
         'results_dir': 'results',
-        'batch_size': 32,
-        'num_epochs': 10,
-        'learning_rate': 0.001,
-        'num_workers': 4,
+        'batch_size': 16,  # Optimized for Tesla P100 16GB
+        'num_epochs': 20,
+        'num_workers': 2,  # Optimized for stability
         'image_size': 224,
-        'use_bbox': False,  # Set to True to use bounding box cropping
+        'use_bbox': False,
+        
+        # Model-specific learning rates and optimizers
+        'model_configs': {
+            # CNN Models - Standard settings work well
+            'resnet18': {
+                'lr': 0.001, 'optimizer': 'adam', 'warmup': 0, 'wd': 1e-4,
+                'scheduler': 'step', 'step_size': 7, 'gamma': 0.1
+            },
+            'resnet50': {
+                'lr': 0.001, 'optimizer': 'adam', 'warmup': 0, 'wd': 1e-4,
+                'scheduler': 'step', 'step_size': 7, 'gamma': 0.1
+            },
+            'resnet101': {
+                'lr': 0.0005, 'optimizer': 'adam', 'warmup': 0, 'wd': 1e-4,
+                'scheduler': 'step', 'step_size': 7, 'gamma': 0.1
+            },
+            'mobilenetv2': {
+                'lr': 0.001, 'optimizer': 'adam', 'warmup': 0, 'wd': 4e-5,
+                'scheduler': 'step', 'step_size': 7, 'gamma': 0.1
+            },
+            
+            # EfficientNet - Use AdamW
+            'efficientnet_b0': {
+                'lr': 0.0005, 'optimizer': 'adamw', 'warmup': 1, 'wd': 1e-5,
+                'scheduler': 'cosine', 'grad_clip': 1.0
+            },
+            'efficientnet_b3': {
+                'lr': 0.0003, 'optimizer': 'adamw', 'warmup': 2, 'wd': 1e-5,
+                'scheduler': 'cosine', 'grad_clip': 1.0
+            },
+            'efficientnet_b7': {
+                'lr': 0.0002, 'optimizer': 'adamw', 'warmup': 3, 'wd': 1e-5,
+                'scheduler': 'cosine', 'grad_clip': 1.0
+            },
+            
+            # ConvNeXt
+            'convnext_tiny': {
+                'lr': 0.0003, 'optimizer': 'adamw', 'warmup': 2, 'wd': 0.05,
+                'scheduler': 'cosine', 'grad_clip': 1.0
+            },
+            
+            # Vision Transformers - CRITICAL SETTINGS based on test results!
+            'vit_base': {
+                'lr': 0.00005,  # Lower LR - was overfitting at 0.0001
+                'optimizer': 'adamw',
+                'warmup': 8,  # Longer warmup for stability
+                'wd': 0.05,
+                'scheduler': 'cosine',
+                'grad_clip': 1.0
+            },
+            'vit_large': {
+                'lr': 0.00003, 'optimizer': 'adamw', 'warmup': 10, 'wd': 0.05,
+                'scheduler': 'cosine', 'grad_clip': 1.0
+            },
+            
+            # Swin Transformers - Settings confirmed working!
+            'swin_tiny': {
+                'lr': 0.0001,  # Confirmed good from test
+                'optimizer': 'adamw',
+                'warmup': 5,
+                'wd': 0.05,
+                'scheduler': 'cosine',
+                'grad_clip': 1.0
+            },
+            'swin_small': {
+                'lr': 0.00008, 'optimizer': 'adamw', 'warmup': 5, 'wd': 0.05,
+                'scheduler': 'cosine', 'grad_clip': 1.0
+            },
+            'swin_base': {
+                'lr': 0.00005, 'optimizer': 'adamw', 'warmup': 5, 'wd': 0.05,
+                'scheduler': 'cosine', 'grad_clip': 1.0
+            },
+        },
+        
         'models_to_train': [
             'resnet18',
             'mobilenetv2',
             'resnet50',
-            'resnet101',
+            # 'resnet101',  # May need batch_size=8 for P100
             'efficientnet_b0',
             'efficientnet_b3',
-            'efficientnet_b7',
+            # 'efficientnet_b7',  # Needs batch_size=8
             'convnext_tiny',
             'vit_base',
-            'swin_tiny'
+            'swin_tiny',
         ]
     }
     
@@ -405,6 +507,20 @@ def main():
         print(f"# Training Model: {model_name.upper()}")
         print(f"{'#'*60}\n")
         
+        # Get model-specific configuration
+        if model_name not in CONFIG['model_configs']:
+            print(f"No config for {model_name}, using defaults")
+            model_config = {
+                'lr': 0.001, 'optimizer': 'adam', 'warmup': 0, 
+                'wd': 1e-4, 'scheduler': 'step', 'step_size': 7, 'gamma': 0.1
+            }
+        else:
+            model_config = CONFIG['model_configs'][model_name]
+        
+        print(f"Configuration: LR={model_config['lr']}, "
+              f"Optimizer={model_config['optimizer']}, "
+              f"Warmup={model_config.get('warmup', 0)} epochs")
+        
         start_time = time.time()
         
         try:
@@ -412,15 +528,50 @@ def main():
             model = create_model(model_name, num_classes=num_classes, pretrained=True)
             model = model.to(device)
             
-            # Loss and optimizer
+            # Create optimizer based on config
+            if model_config['optimizer'] == 'adamw':
+                optimizer = optim.AdamW(
+                    model.parameters(), 
+                    lr=model_config['lr'],
+                    weight_decay=model_config['wd']
+                )
+            else:
+                optimizer = optim.Adam(
+                    model.parameters(),
+                    lr=model_config['lr'],
+                    weight_decay=model_config['wd']
+                )
+            
+            # Create scheduler based on config
+            if model_config.get('scheduler') == 'cosine':
+                # Cosine annealing with warmup
+                steps_per_epoch = len(train_loader)
+                num_warmup_steps = model_config.get('warmup', 0) * steps_per_epoch
+                num_training_steps = CONFIG['num_epochs'] * steps_per_epoch
+                
+                scheduler = get_cosine_schedule_with_warmup(
+                    optimizer,
+                    num_warmup_steps=num_warmup_steps,
+                    num_training_steps=num_training_steps
+                )
+                # Note: This scheduler steps per batch, not per epoch
+                # We'll handle this in the training loop
+            else:
+                # Step LR (default for CNNs)
+                scheduler = optim.lr_scheduler.StepLR(
+                    optimizer,
+                    step_size=model_config.get('step_size', 7),
+                    gamma=model_config.get('gamma', 0.1)
+                )
+            
+            # Loss function
             criterion = nn.CrossEntropyLoss()
-            optimizer = optim.Adam(model.parameters(), lr=CONFIG['learning_rate'])
-            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
             
             # Train model
             history, best_acc = train_model(
                 model, train_loader, val_loader, criterion, optimizer,
-                scheduler, device, CONFIG['num_epochs'], model_name, CONFIG['save_dir']
+                scheduler, device, CONFIG['num_epochs'], model_name, 
+                CONFIG['save_dir'], model_config
             )
             
             training_time = time.time() - start_time
@@ -432,6 +583,7 @@ def main():
                 'final_val_acc': float(history['val_acc'][-1]),
                 'final_val_f1': float(history['val_f1'][-1]),
                 'training_time_seconds': training_time,
+                'config': model_config,
                 'history': history
             }
             
@@ -445,6 +597,8 @@ def main():
             
         except Exception as e:
             print(f"\n✗ Error training {model_name}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             results_summary[model_name] = {
                 'error': str(e),
                 'status': 'failed'
