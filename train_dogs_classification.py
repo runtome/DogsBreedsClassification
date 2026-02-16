@@ -336,7 +336,7 @@ def main():
         'save_dir': 'model_checkpoints',
         'results_dir': 'results',
         'batch_size': 16,  # Optimized for Tesla P100 16GB
-        'num_epochs': 20,
+        'num_epochs': 10,
         'num_workers': 2,  # Optimized for stability
         'image_size': 224,
         'use_bbox': False,
