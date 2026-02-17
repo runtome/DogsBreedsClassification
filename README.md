@@ -1,5 +1,10 @@
 # Stanford Dogs Classification - Multi-Model Comparison
 
+[![GitHub](https://img.shields.io/badge/GitHub-runtome%2FDogsBreedsClassification-blue?logo=github)](https://github.com/runtome/DogsBreedsClassification)
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.8-orange)](https://pytorch.org/)
+[![timm](https://img.shields.io/badge/timm-1.0.20-green)](https://github.com/huggingface/pytorch-image-models)
+
 A comprehensive deep learning project for classifying **120 dog breeds** across **20,580 images** using 8 state-of-the-art architectures on the Stanford Dogs Dataset.
 
 ---
@@ -259,15 +264,38 @@ train_transform = transforms.Compose([
 
 ## 📝 Citation
 
-If you use this code, please cite the Stanford Dogs dataset:
+If you use this code or dataset, please cite:
 
+### Dataset — Stanford Dogs
 ```bibtex
 @inproceedings{KhoslaYaoJayadevaprakashFeiFei_FGVC2011,
-  author    = "Aditya Khosla and Nityananda Jayadevaprakash and Bangpeng Yao and Li Fei-Fei",
-  title     = "Novel Dataset for Fine-Grained Image Categorization",
-  booktitle = "First Workshop on Fine-Grained Visual Categorization, CVPR",
-  year      = "2011"
+  author    = {Aditya Khosla and Nityananda Jayadevaprakash and Bangpeng Yao and Li Fei-Fei},
+  title     = {Novel Dataset for Fine-Grained Image Categorization},
+  booktitle = {First Workshop on Fine-Grained Visual Categorization,
+               IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2011},
+  month     = {June},
+  address   = {Colorado Springs, CO}
 }
+```
+
+### Dataset — ImageNet (source of annotations)
+```bibtex
+@inproceedings{imagenet_cvpr09,
+  author    = {Deng, J. and Dong, W. and Socher, R. and Li, L.-J. and Li, K. and Fei-Fei, L.},
+  title     = {ImageNet: A Large-Scale Hierarchical Image Database},
+  booktitle = {IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2009}
+}
+```
+
+### Dataset Links
+- **Official**: http://vision.stanford.edu/aditya86/ImageNetDogs/
+- **Kaggle**: https://www.kaggle.com/datasets/jessicali9530/stanford-dogs-dataset
+
+### This Repository
+```
+GitHub: https://github.com/runtome/DogsBreedsClassification
 ```
 
 ---
